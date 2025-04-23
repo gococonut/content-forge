@@ -1,0 +1,35 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    ports:
+      - "${N8N_PORT:-8000}:5678"
+    environment:
+      - N8N_EDITOR_BASE_URL=${N8N_DOMAIN}
+      - WEBHOOK_URL=${N8N_DOMAIN}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./output:/files
+    restart: unless-stopped
+
+  tts:
+    build:
+      context: ./tts
+    container_name: tts
+    environment:
+      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
+      - MINIMAX_GROUP_ID=${MINIMAX_GROUP_ID}
+    volumes:
+      - ./output/audio:/files
+    restart: unless-stopped
+
+  github-trending:
+    image: gococonut/github-trending-api:latest
+    container_name: github-trending
+    restart: unless-stopped
+
+
+volumes:
+  n8n_data:
+    name: n8n_data
+    external: true
