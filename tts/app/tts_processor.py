@@ -46,7 +46,7 @@ async def process_chunk(client: httpx.AsyncClient, chunk_text: str, enable_subti
         "model": "speech-01-turbo", # Or configurable
         "text": chunk_text,
         "timber_weights": [{"voice_id": "male-qn-jingying", "weight": 1}], # Or configurable
-        "voice_setting": {"speed": 1.05, "pitch": 0, "vol": 2, "voice_id": "male-qn-jingying" }, # Or configurable
+        "voice_setting": {"speed": 1, "pitch": 0, "vol": 2, "voice_id": "male-qn-jingying" }, # Or configurable
         "audio_setting": {"sample_rate": 32000, "bitrate": 128000, "format": "mp3"},
         "subtitle_enable": enable_subtitles
     }
