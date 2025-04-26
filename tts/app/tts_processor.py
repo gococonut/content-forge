@@ -46,7 +46,7 @@ async def process_chunk(client: httpx.AsyncClient, chunk_text: str, enable_subti
         "model": "speech-01-turbo", # Or configurable
         "text": chunk_text,
         "timber_weights": [{"voice_id": "male-qn-jingying", "weight": 1}], # Or configurable
-        "voice_setting": {"speed": 1.05, "pitch": 0, "vol": 1, "voice_id": "male-qn-jingying" }, # Or configurable
+        "voice_setting": {"speed": 1.05, "pitch": 0, "vol": 2, "voice_id": "male-qn-jingying" }, # Or configurable
         "audio_setting": {"sample_rate": 32000, "bitrate": 128000, "format": "mp3"},
         "subtitle_enable": enable_subtitles
     }
@@ -206,7 +206,7 @@ async def process_long_text_to_speech(
         # 添加主要内容（先处理第一个片段）
         first_segment = None
         remaining_segments = []
-        
+
         for i, result in enumerate(successful_results):
             chunk_audio_path = result["audio_path"]
             temp_audio_files.append(chunk_audio_path)
@@ -220,25 +220,25 @@ async def process_long_text_to_speech(
         if intro_audio and first_segment:
             # 计算非重叠部分的长度
             non_overlap_intro_duration = intro_duration_ms - intro_overlap_duration_ms
-            
+
             # 将 intro 分成两部分：主体部分和淡出部分
             intro_main = intro_audio[:-intro_overlap_duration_ms]
             intro_fade = intro_audio[-intro_overlap_duration_ms:].fade_out(intro_overlap_duration_ms)
-            
+
             # 将第一个 TTS 片段分成两部分：重叠部分和主体部分
             first_overlap = first_segment[:intro_overlap_duration_ms]
             first_main = first_segment[intro_overlap_duration_ms:]
-            
+
             # 合并重叠部分
             overlap_segment = intro_fade.overlay(first_overlap)
-            
+
             # 组合所有部分
             combined_audio = intro_main + overlap_segment + first_main
         else:
             # 如果没有 intro，直接添加第一个片段
             if first_segment:
                 combined_audio = first_segment
-        
+
         # 添加剩余的 TTS 片段
         for segment in remaining_segments:
             combined_audio += segment

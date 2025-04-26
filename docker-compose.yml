@@ -16,6 +16,8 @@ services:
     build:
       context: ./tts
     container_name: tts
+    ports:
+      - "${TTS_PORT:-8081}:8000"
     environment:
       - MINIMAX_API_KEY=${MINIMAX_API_KEY}
       - MINIMAX_GROUP_ID=${MINIMAX_GROUP_ID}
