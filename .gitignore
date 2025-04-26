@@ -42,7 +42,6 @@ output/
 output/audio/
 output/notes/
 output/metadata/
-*.mp3
 *.wav
 *.m4a
 *.aac
