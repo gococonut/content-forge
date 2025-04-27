@@ -281,17 +281,23 @@ async def process_long_text_to_speech(
     if enable_subtitles:
         srt_content = ""
         srt_index = 1
-        # 调整字幕偏移时间，考虑重叠部分
-        current_offset_ms = intro_duration_ms - intro_overlap_duration_ms if intro_audio else 0
+        # 计算初始偏移时间
+        # 如果有 intro，TTS 音频的开始时间点是 intro 长度减去重叠部分
+        # 这个时间点就是第一个 TTS chunk 的字幕的起始偏移量
+        current_offset_ms = (intro_duration_ms - intro_overlap_duration_ms) if intro_audio else 0
         all_subs_present = True
 
         for i, result in enumerate(successful_results):
             chunk_subtitles = result.get("subtitles")
+            # 获取当前 chunk 的实际持续时间，用于累加偏移量
+            # 注意：这里需要确保 result 中包含准确的 duration_ms
+            # 如果 TTS 服务返回的 duration 不准，可能需要从生成的音频文件获取
             chunk_duration_ms = result.get("duration_ms", 0)
-
             if chunk_subtitles is None and len(chunks[i].strip()) > 0:
-                print(f"Warning: Missing subtitle data for chunk {i+1}")
+                print(f"警告: 第 {i+1} 个 chunk 缺少字幕数据")
                 all_subs_present = False
+                # 即使没有字幕，也要累加这个 chunk 的时长到偏移量
+                current_offset_ms += chunk_duration_ms
                 continue
 
             if chunk_subtitles:
@@ -301,32 +307,29 @@ async def process_long_text_to_speech(
                     sub_text = sub_item.get("text")
 
                     if time_begin is not None and time_end is not None and sub_text:
-                        # 为第一个片段特殊处理时间戳
-                        if i == 0:
-                            # 如果是第一个片段，考虑重叠时间
-                            adj_time_begin = time_begin
-                            adj_time_end = time_end
-                            if intro_audio:
-                                # 只对重叠范围内的字幕进行特殊处理
-                                if time_begin < intro_overlap_duration_ms:
-                                    adj_time_begin = time_begin + (intro_duration_ms - intro_overlap_duration_ms)
-                                if time_end < intro_overlap_duration_ms:
-                                    adj_time_end = time_end + (intro_duration_ms - intro_overlap_duration_ms)
-                        else:
-                            # 非第一个片段使用正常偏移
-                            adj_time_begin = time_begin + current_offset_ms
-                            adj_time_end = time_end + current_offset_ms
+                        # 计算在最终合并音频中的绝对时间戳
+                        # time_begin 和 time_end 是相对于当前 chunk 音频开始的时间（从0开始）
+                        # current_offset_ms 是当前 chunk 在最终音频中的开始时间点
+                        adj_time_begin = time_begin + current_offset_ms
+                        adj_time_end = time_end + current_offset_ms
+
+                        # 确保结束时间不小于开始时间 (防止原始数据或计算问题)
+                        if adj_time_end < adj_time_begin:
+                            print(f"警告: 第 {i+1} 个 chunk 的字幕条目 {srt_index} 结束时间早于开始时间。原始: {time_begin} -> {time_end}, 调整后: {adj_time_begin} -> {adj_time_end}。跳过此条目。")
+                            continue
 
                         start_ts = format_ms_to_srt_time(adj_time_begin)
                         end_ts = format_ms_to_srt_time(adj_time_end)
 
                         srt_content += f"{srt_index}\n"
                         srt_content += f"{start_ts} --> {end_ts}\n"
-                        srt_content += f"{sub_text}\n\n"
+                        srt_content += f"{sub_text.strip()}\n\n" # 使用 strip() 清理可能的首尾空白
                         srt_index += 1
                     else:
-                        print(f"Warning: Invalid subtitle item format in chunk {i+1}")
+                        print(f"警告: 第 {i+1} 个 chunk 中的字幕条目格式无效")
 
+            # 处理完一个 chunk 的所有字幕后，累加这个 chunk 的时长到总偏移量
+            # 为下一个 chunk 计算正确的开始时间
             current_offset_ms += chunk_duration_ms
 
         if srt_content:
